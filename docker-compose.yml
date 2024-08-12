@@ -1,0 +1,14 @@
+version: '3.7'
+
+services:
+  mysql:
+    container_name: urbs-data-mysql
+    image: mysql:8.0.39
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456789
+    ports:
+      - '3307:3306'
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d/
+      - /mnt/work/database:/var/lib/mysql/
