@@ -1,5 +1,10 @@
 version: '3.7'
 
+networks:
+  default:
+    name: urbs-network
+    external: true
+
 services:
   mysql:
     container_name: urbs-data-mysql
@@ -11,4 +16,7 @@ services:
       - '3307:3306'
     volumes:
       - ./init-scripts:/docker-entrypoint-initdb.d/
-      - /mnt/work/database:/var/lib/mysql/
+      - /mnt/work/database/mysql:/var/lib/mysql/
+      - /mnt/work/database/mysql-files:/var/lib/mysql-files/
+    networks:
+      - default

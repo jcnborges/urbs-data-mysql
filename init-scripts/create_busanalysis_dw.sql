@@ -224,3 +224,13 @@ BEGIN
     INNER JOIN busanalysis_dw.dim_line AS dim_line ON dim_line.line_code = evt.line_code;
 END$$
 DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_load_all`(IN base_date DATE)
+BEGIN
+	CALL busanalysis_dw.sp_load_dim_bus_stop();
+    CALL busanalysis_dw.sp_load_dim_line();
+	CALL busanalysis_dw.sp_load_fat_event(base_date);
+	CALL busanalysis_dw.sp_load_fat_itinerary(base_date);
+END$$
+DELIMITER ;
