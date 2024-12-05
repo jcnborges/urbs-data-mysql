@@ -12,7 +12,7 @@ CREATE TABLE `dim_bus_stop` (
   `last_update` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `legacy_id_UNIQUE` (`legacy_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15453 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `dim_line` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -23,7 +23,7 @@ CREATE TABLE `dim_line` (
   `last_update` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `line_code` (`line_code`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=593 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `fat_event` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -41,7 +41,7 @@ CREATE TABLE `fat_event` (
   KEY `fat_event_base_date_idx` (`base_date`) USING BTREE,
   CONSTRAINT `fk_dim_bus_stop` FOREIGN KEY (`dim_bus_stop_id`) REFERENCES `dim_bus_stop` (`id`),
   CONSTRAINT `fk_dim_line` FOREIGN KEY (`dim_line_id`) REFERENCES `dim_line` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=33779859 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `fat_itinerary` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -62,7 +62,16 @@ CREATE TABLE `fat_itinerary` (
   CONSTRAINT `fk_dim_bus_stop_1` FOREIGN KEY (`bus_stop_id`) REFERENCES `dim_bus_stop` (`id`),
   CONSTRAINT `fk_dim_line_itinerary` FOREIGN KEY (`dim_line_id`) REFERENCES `dim_line` (`id`),
   CONSTRAINT `fk_dim_next_bus_stop` FOREIGN KEY (`next_bus_stop_id`) REFERENCES `dim_bus_stop` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2482714 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `fat_most_relevant_itinerary` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `line_code` varchar(255) NOT NULL DEFAULT '',
+  `itinerary_id` int DEFAULT NULL,
+  `base_date` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fat_mri_line_itinerary_date` (`line_code`,`itinerary_id`,`base_date`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3;
 
 DELIMITER $$
 CREATE DEFINER=`root`@`localhost` FUNCTION `fn_haversine`(lat1 double, lng1 double, lat2 double, lng2 double) RETURNS double
@@ -92,6 +101,8 @@ DELIMITER ;
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `busanalysis_dw`.`vw_cluster` AS select `d1`.`legacy_id` AS `bus_stop_centre`,`d2`.`legacy_id` AS `bus_stop_clustered`,`busanalysis_dw`.`fn_haversine`(`d1`.`latitude`,`d1`.`longitude`,`d2`.`latitude`,`d2`.`longitude`) AS `d` from (`busanalysis_dw`.`dim_bus_stop` `d1` join `busanalysis_dw`.`dim_bus_stop` `d2`) where (`busanalysis_dw`.`fn_haversine`(`d1`.`latitude`,`d1`.`longitude`,`d2`.`latitude`,`d2`.`longitude`) <= 600);
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `busanalysis_dw`.`vw_event` AS select `busanalysis_dw`.`dim_line`.`line_code` AS `line_code`,`busanalysis_dw`.`dim_line`.`line_name` AS `line_name`,`fat`.`vehicle` AS `vehicle`,`dim`.`latitude` AS `latitude`,`dim`.`longitude` AS `longitude`,`dim`.`name` AS `name`,`dim`.`legacy_id` AS `legacy_id`,`dim`.`type` AS `type`,`fat`.`seq` AS `seq`,`fat`.`itinerary_id` AS `itinerary_id`,`fat`.`event_timestamp` AS `event_timestamp`,`fat`.`base_date` AS `base_date` from ((`busanalysis_dw`.`fat_event` `fat` join `busanalysis_dw`.`dim_bus_stop` `dim` on((`fat`.`dim_bus_stop_id` = `dim`.`id`))) join `busanalysis_dw`.`dim_line` on((`fat`.`dim_line_id` = `busanalysis_dw`.`dim_line`.`id`)));
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `busanalysis_dw`.`vw_itinerary` AS select `busanalysis_dw`.`dim_line`.`line_code` AS `line_code`,`busanalysis_dw`.`dim_line`.`line_name` AS `line_name`,`fat`.`itinerary_id` AS `itinerary_id`,`busanalysis_dw`.`dim_bus_stop`.`legacy_id` AS `legacy_id`,`busanalysis_dw`.`dim_bus_stop`.`name` AS `name`,`busanalysis_dw`.`dim_bus_stop`.`type` AS `type`,`busanalysis_dw`.`dim_bus_stop`.`latitude` AS `latitude`,`busanalysis_dw`.`dim_bus_stop`.`longitude` AS `longitude`,`dim_next_bus_stop`.`name` AS `next_bus_stop_name`,`dim_next_bus_stop`.`legacy_id` AS `next_bus_stop_legacy_id`,`fat`.`next_bus_stop_delta_s` AS `next_bus_stop_delta_s`,`fat`.`seq` AS `seq`,`fat`.`base_date` AS `base_date` from (((`busanalysis_dw`.`fat_itinerary` `fat` join `busanalysis_dw`.`dim_bus_stop` on((`fat`.`bus_stop_id` = `busanalysis_dw`.`dim_bus_stop`.`id`))) left join `busanalysis_dw`.`dim_bus_stop` `dim_next_bus_stop` on((`fat`.`next_bus_stop_id` = `dim_next_bus_stop`.`id`))) join `busanalysis_dw`.`dim_line` on((`fat`.`dim_line_id` = `busanalysis_dw`.`dim_line`.`id`)));
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `busanalysis_dw`.`vw_event_mri` AS select `busanalysis_dw`.`vw_event`.`line_code` AS `line_code`,`busanalysis_dw`.`vw_event`.`line_name` AS `line_name`,`busanalysis_dw`.`vw_event`.`vehicle` AS `vehicle`,`busanalysis_dw`.`vw_event`.`latitude` AS `latitude`,`busanalysis_dw`.`vw_event`.`longitude` AS `longitude`,`busanalysis_dw`.`vw_event`.`name` AS `name`,`busanalysis_dw`.`vw_event`.`legacy_id` AS `legacy_id`,`busanalysis_dw`.`vw_event`.`type` AS `type`,`busanalysis_dw`.`vw_event`.`seq` AS `seq`,`busanalysis_dw`.`vw_event`.`itinerary_id` AS `itinerary_id`,`busanalysis_dw`.`vw_event`.`event_timestamp` AS `event_timestamp`,`busanalysis_dw`.`vw_event`.`base_date` AS `base_date` from (`busanalysis_dw`.`vw_event` join `busanalysis_dw`.`fat_most_relevant_itinerary` `fat` on(((`busanalysis_dw`.`vw_event`.`line_code` = `fat`.`line_code`) and (`busanalysis_dw`.`vw_event`.`itinerary_id` = `fat`.`itinerary_id`) and (`busanalysis_dw`.`vw_event`.`base_date` = `fat`.`base_date`))));
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `busanalysis_dw`.`vw_event_mri` AS select `busanalysis_dw`.`vw_event`.`line_code` AS `line_code`,`busanalysis_dw`.`vw_event`.`line_name` AS `line_name`,`busanalysis_dw`.`vw_event`.`vehicle` AS `vehicle`,`busanalysis_dw`.`vw_event`.`latitude` AS `latitude`,`busanalysis_dw`.`vw_event`.`longitude` AS `longitude`,`busanalysis_dw`.`vw_event`.`name` AS `name`,`busanalysis_dw`.`vw_event`.`legacy_id` AS `legacy_id`,`busanalysis_dw`.`vw_event`.`type` AS `type`,`busanalysis_dw`.`vw_event`.`seq` AS `seq`,`busanalysis_dw`.`vw_event`.`itinerary_id` AS `itinerary_id`,`busanalysis_dw`.`vw_event`.`event_timestamp` AS `event_timestamp`,`busanalysis_dw`.`vw_event`.`base_date` AS `base_date` from (`busanalysis_dw`.`vw_event` join `busanalysis_dw`.`fat_most_relevant_itinerary` `fat` on(((`busanalysis_dw`.`vw_event`.`line_code` = `fat`.`line_code`) and (`busanalysis_dw`.`vw_event`.`itinerary_id` = `fat`.`itinerary_id`) and (`busanalysis_dw`.`vw_event`.`base_date` = `fat`.`base_date`))));
 
 DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_load_dim_bus_stop`()
@@ -222,6 +233,45 @@ BEGIN
 	FROM busanalysis_etl.etl_event AS evt
 	INNER JOIN busanalysis_dw.dim_bus_stop AS dim ON dim.legacy_id = evt.id
     INNER JOIN busanalysis_dw.dim_line AS dim_line ON dim_line.line_code = evt.line_code;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`%` PROCEDURE `sp_load_fat_most_relevant_itinerary`(IN base_date_in DATE)
+BEGIN
+	DELETE FROM busanalysis_dw.fat_most_relevant_itinerary
+	WHERE
+		base_date = base_date_in;
+        
+	INSERT INTO busanalysis_dw.fat_most_relevant_itinerary(line_code, itinerary_id, base_date)
+	WITH ItineraryCounts AS (
+		SELECT DISTINCT line_code, base_date, COUNT(DISTINCT itinerary_id) AS itinerary_counts
+		FROM fat_itinerary
+		INNER JOIN dim_line ON dim_line.id = fat_itinerary.dim_line_id
+		WHERE
+			base_date = base_date_in
+		GROUP BY line_code, base_date
+	),
+	MostRelevantItineraries AS (
+		SELECT dim_line.line_code, itinerary_id, COUNT(*) AS count, ROW_NUMBER() OVER (PARTITION BY dim_line.line_code ORDER BY COUNT(*) DESC) AS row_num, fat_event.base_date
+		FROM fat_event
+		INNER JOIN dim_line ON dim_line.id = fat_event.dim_line_id
+		INNER JOIN ItineraryCounts tbl ON tbl.line_code = dim_line.line_code AND tbl.base_date = fat_event.base_date
+		WHERE itinerary_counts > 2
+		GROUP BY fat_event.base_date, dim_line.line_code, itinerary_id
+	)
+	SELECT line_code, itinerary_id, base_date
+	FROM MostRelevantItineraries
+	WHERE row_num = 1
+
+	UNION ALL
+
+	SELECT DISTINCT dim_line.line_code, fat_itinerary.itinerary_id, tbl.base_date
+	FROM fat_itinerary
+	INNER JOIN dim_line ON dim_line.id = fat_itinerary.dim_line_id
+	INNER JOIN ItineraryCounts tbl ON tbl.line_code = dim_line.line_code AND tbl.base_date = fat_itinerary.base_date
+	WHERE
+		itinerary_counts <= 2;
 END$$
 DELIMITER ;
 
